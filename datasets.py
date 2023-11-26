@@ -60,6 +60,15 @@ class ImageCaptionDatasetBase(torch.utils.data.Dataset):
             with open(metadata) as f:
                 annotations = json.load(f)
             self.samples = [(ann['image_id'], ann['subreddit'], ann['caption']) for ann in annotations]
+        elif self.dataset == 'roco':
+            self.samples = []
+            # Read the pairs from the file and store them
+            with open(metadata, 'r') as file:
+                for line in file:
+                    parts = line.strip().split(maxsplit=1)
+                    if len(parts) == 2:
+                        image_name, caption = parts
+                        self.samples.append((image_name, caption))
 
     def get_raw_item(self, i):
         if self.dataset == 'yfcc15m':
@@ -87,7 +96,10 @@ class ImageCaptionDatasetBase(torch.utils.data.Dataset):
             image_id, subreddit, caption = self.samples[i]
             path = os.path.join(self.root, subreddit, f"{image_id}.jpg")
             img = pil_loader(path)
-
+        elif self.dataset == 'roco':
+            image_id, caption = self.samples[i]
+            path = os.path.join(self.root+'/images', f"{image_id}.jpg")
+            img = pil_loader(path)
         return img, caption
 
     def __getitem__(self, i):
@@ -233,3 +245,4 @@ def get_dataset(train_transform, tokenizer, args):
         return ImageCaptionDatasetCLIP(args.dataset, args.root, args.metadata, train_transform, tokenizer)
     elif args.model.startswith('SLIP'):
         return ImageCaptionDatasetSLIP(args.dataset, args.root, args.metadata, train_transform, augment, tokenizer)
+# TODO: add the path of the roco file into the dataset_catalog.json

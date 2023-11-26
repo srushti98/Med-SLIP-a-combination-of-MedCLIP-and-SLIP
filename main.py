@@ -180,8 +180,8 @@ def main(args):
     cwd = os.path.dirname(os.path.realpath(__file__))
     with open(os.path.join(cwd, 'dataset_catalog.json')) as f:
         root = json.load(f)['imagenet']['path']
-    val_dataset = ImageFolder(os.path.join(root, 'val'), val_transform)
-
+    # val_dataset = ImageFolder(os.path.join(root, 'validation/radiology'), val_transform)
+    # TODO: add a ROCO-Val function in the datasets.py
     # dist eval resamples data to pad uneven batch sizes
     # make sure num_samples = 0 mod num_gpus for exact acc
     if args.distributed:
@@ -195,20 +195,20 @@ def main(args):
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
 
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=(val_sampler is None),
-        num_workers=args.workers, pin_memory=True, sampler=val_sampler, drop_last=False)
+    # val_loader = torch.utils.data.DataLoader(
+    #     val_dataset, batch_size=args.batch_size, shuffle=(val_sampler is None),
+    #     num_workers=args.workers, pin_memory=True, sampler=val_sampler, drop_last=False)
 
     if args.evaluate:
         if args.model.startswith('SIMCLR'):
             print('zero-shot evaluation not supported with ssl-only model.')
             return
 
-        zero_stats = validate_zeroshot(val_loader, model, tokenizer, args)
-        if utils.is_main_process():
-            with open(os.path.join(args.output_dir, 'eval_log.txt'), 'a') as f:
-                f.write(json.dumps(zero_stats) + '\n')
-        return
+        # zero_stats = validate_zeroshot(val_loader, model, tokenizer, args)
+        # if utils.is_main_process():
+        #     with open(os.path.join(args.output_dir, 'eval_log.txt'), 'a') as f:
+        #         f.write(json.dumps(zero_stats) + '\n')
+        # return
 
     lr_schedule = utils.cosine_scheduler(args.lr, args.lr_end, args.epochs,
         len(train_loader) // args.update_freq, warmup_epochs=args.warmup_epochs, start_warmup_value=args.lr_start)
@@ -233,13 +233,13 @@ def main(args):
         if args.model.startswith('SIMCLR'):
             val_stats = {'acc1': -1}
             acc1 = -1
-        else:
-            val_stats = validate_zeroshot(val_loader, model, tokenizer, args)
-            acc1 = val_stats['acc1']
+        # else:
+        #     val_stats = validate_zeroshot(val_loader, model, tokenizer, args)
+        #     acc1 = val_stats['acc1']
 
-        is_best = acc1 > best_acc1
-        best_acc1 = max(acc1, best_acc1)
-
+        # is_best = acc1 > best_acc1
+        # best_acc1 = max(acc1, best_acc1)
+        is_best=True
         print("=> saving checkpoint")
         utils.save_on_master({
                 'epoch': epoch + 1,
@@ -251,7 +251,7 @@ def main(args):
             }, is_best, args.output_dir)
 
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                     **{f'test_{k}': v for k, v in val_stats.items()},
+                     # **{f'test_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch}
 
         if utils.is_main_process():

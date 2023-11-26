@@ -146,5 +146,12 @@
         "type": "imagefolder",
         "train": "train",
         "test": "val"
+    },
+    "roco": {
+        "path": "give path till before train, also while loading the path give add /radiology to it",
+        "type": "imagefolder",
+        "train": "train",
+        "test": "val"
     }
+
 }
