@@ -23,7 +23,7 @@ import torch.utils.data
 import torch.utils.data.distributed
 from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms
-
+from transformers import AutoTokenizer
 import datasets
 import models
 from tokenizer import SimpleTokenizer
@@ -33,10 +33,10 @@ import utils
 def get_args_parser():
     parser = argparse.ArgumentParser(description='SLIP training and evaluation', add_help=False)
     # Data
-    parser.add_argument('--dataset', default='yfcc15m', type=str, choices=['yfcc15m', 'cc3m', 'cc12m', 'coco', 'redcaps'])
-    parser.add_argument('--root', default='', type=str,
+    parser.add_argument('--dataset', default='roco', type=str, choices=['yfcc15m', 'cc3m', 'cc12m', 'coco', 'redcaps'])
+    parser.add_argument('--root', default='/scratch/sxp8182/MLHC/ML_env/MLHC/roco-dataset/data/train/radiology', type=str,
                         help='path to dataset root')
-    parser.add_argument('--metadata', default='yfcc15m.pkl', type=str,
+    parser.add_argument('--metadata', default='/scratch/sxp8182/MLHC/ML_env/MLHC/roco-dataset/data/train/radiology/initial_100_selected_pairs.txt', type=str,
                         help='path to metadata file (see README for details)')
     parser.add_argument('--output-dir', default='./', type=str, help='output dir')
     # Model
@@ -91,8 +91,8 @@ best_acc1 = 0
 
 
 def main(args):
-    utils.init_distributed_mode(args)
-
+    #utils.init_distributed_mode(args)
+    args.distributed = False
     global best_acc1
 
     # fix the seed for reproducibility
@@ -161,7 +161,11 @@ def main(args):
 
     # Data loading code
     print("=> creating dataset")
-    tokenizer = SimpleTokenizer()
+    BERT_TYPE = 'emilyalsentzer/Bio_ClinicalBERT'
+    tokenizer = AutoTokenizer.from_pretrained(BERT_TYPE)
+    tokenizer.model_max_length = 77
+    print("tokenizer assignment complete")
+    #tokenizer = SimpleTokenizer()
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     train_transform = transforms.Compose([
@@ -186,7 +190,7 @@ def main(args):
     # make sure num_samples = 0 mod num_gpus for exact acc
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-        val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
+        # val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
     else:
         train_sampler = None
         val_sampler = None
@@ -249,7 +253,7 @@ def main(args):
                 'best_acc1': best_acc1,
                 'args': args,
             }, is_best, args.output_dir)
-
+        torch.save(model.MedCLIP_model.vision_model.state_dict(), '/scratch/sxp8182/MLHC/ML_env/MLHC/image_encoder.pth')
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
                      # **{f'test_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch}
@@ -481,3 +485,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
     main(args)
+

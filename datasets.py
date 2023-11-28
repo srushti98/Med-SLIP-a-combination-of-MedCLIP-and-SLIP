@@ -61,6 +61,7 @@ class ImageCaptionDatasetBase(torch.utils.data.Dataset):
                 annotations = json.load(f)
             self.samples = [(ann['image_id'], ann['subreddit'], ann['caption']) for ann in annotations]
         elif self.dataset == 'roco':
+            print("Inside roco")
             self.samples = []
             # Read the pairs from the file and store them
             with open(metadata, 'r') as file:
@@ -69,8 +70,10 @@ class ImageCaptionDatasetBase(torch.utils.data.Dataset):
                     if len(parts) == 2:
                         image_name, caption = parts
                         self.samples.append((image_name, caption))
+            #print(len(self.samples))
 
     def get_raw_item(self, i):
+        #print(self.dataset)
         if self.dataset == 'yfcc15m':
             index, title, desc = self.samples[i]
             caption = np.random.choice([title, desc])
@@ -99,6 +102,7 @@ class ImageCaptionDatasetBase(torch.utils.data.Dataset):
         elif self.dataset == 'roco':
             image_id, caption = self.samples[i]
             path = os.path.join(self.root+'/images', f"{image_id}.jpg")
+            #print(image_id,":", caption, ":",path)
             img = pil_loader(path)
         return img, caption
 
@@ -147,9 +151,14 @@ class ImageCaptionDatasetSLIP(ImageCaptionDatasetBase):
 
         # tokenize caption
         if self.tokenizer is not None:
-            caption = self.tokenizer(caption)
-
-        return image, caption, aug1, aug2
+            #caption = self.tokenizer(caption)
+            text_inputs=self.tokenizer(caption, truncation=True, padding='max_length', return_tensors='pt')
+           # print("text_inputs printing:",text_inputs)
+           # print("text_inputs['input_ids'][0]",text_inputs['input_ids'][0])
+           # print("text_inputs['attention_mask'][0]",text_inputs['attention_mask'][0])
+           # print("text_inputs['input_ids']",text_inputs['input_ids'])
+           # print("text_inputs['attention_mask']",text_inputs['attention_mask'])
+        return image, text_inputs['input_ids'][0],text_inputs['attention_mask'][0], aug1, aug2
 
 
 class ImageCaptionDatasetSSL(ImageCaptionDatasetBase):
@@ -200,10 +209,6 @@ def get_downstream_dataset(catalog, name, is_train, transform):
         if name == 'cifar10':
             dataset = t_datasets.CIFAR10(root, train=is_train,
                 transform=transform, download=True)
-        elif name == 'cifar100':
-            dataset = t_datasets.CIFAR100(root, train=is_train,
-                transform=transform, download=True)
-        elif name == 'stl10':
             dataset = t_datasets.STL10(root, split='train' if is_train else 'test',
                 transform=transform, download=True)
         elif name == 'mnist':
@@ -244,5 +249,6 @@ def get_dataset(train_transform, tokenizer, args):
     elif args.model.startswith('CLIP'):
         return ImageCaptionDatasetCLIP(args.dataset, args.root, args.metadata, train_transform, tokenizer)
     elif args.model.startswith('SLIP'):
-        return ImageCaptionDatasetSLIP(args.dataset, args.root, args.metadata, train_transform, augment, tokenizer)
+        return ImageCaptionDatasetSLIP(args.dataset, args.root, args.metadata,
+                train_transform, augment, tokenizer)
 # TODO: add the path of the roco file into the dataset_catalog.json

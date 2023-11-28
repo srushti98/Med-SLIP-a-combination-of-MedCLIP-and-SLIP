@@ -13,7 +13,7 @@ import torch
 from torch import nn
 
 import losses
-
+from medclip import MedCLIPModel, MedCLIPVisionModelViT, MedCLIPVisionModel
 
 class LayerNorm(nn.LayerNorm):
     """Subclass torch's LayerNorm to handle fp16."""
@@ -207,7 +207,8 @@ class SLIP(CLIP):
                  **kwargs,
                  ):
         super().__init__(**kwargs)
-
+        self.MedCLIP_model = MedCLIPModel(vision_cls=MedCLIPVisionModel)
+        self.MedCLIP_model.from_pretrained()
         self.image_mlp = self._build_mlp(in_dim=self.vision_width, mlp_dim=ssl_mlp_dim, out_dim=ssl_emb_dim)
 
     def _build_mlp(self, in_dim, mlp_dim, out_dim):
@@ -221,13 +222,20 @@ class SLIP(CLIP):
             ("layer3", nn.Linear(mlp_dim, out_dim)),
         ]))
 
-    def forward(self, image, text, aug1, aug2):
+    def forward(self, image, text, attention_mask,aug1, aug2):
+       # print("text coming in forward", text)
+       # print("attention_mask coming in forward",attention_mask)
         aug1_embed = self.image_mlp(self.visual(aug1))
         aug2_embed = self.image_mlp(self.visual(aug2))
         
-        image_embed = self.encode_image(image)
-        text_embed = self.encode_text(text)
-
+        #image_embed = self.encode_image(image)
+        #text_embed = self.encode_text(text)
+        print("calling text encoder")
+        text_embed = self.MedCLIP_model.encode_text(text,attention_mask)
+        #print("calling image encoder now")
+        image_embed = self.MedCLIP_model.encode_image(image)
+        print("image embedding success")
+        #print(image_embed)
         return {'image_embed': image_embed,
                 'text_embed': text_embed,
                 'logit_scale': self.logit_scale.exp(),
@@ -254,12 +262,12 @@ def get_metric_names(model):
         return ['loss', 'ssl_loss', 'ssl_acc']
 
 
-@timm.models.registry.register_model
-def vit_small_mocov3_patch16_224(**kwargs):
-    model_kwargs = dict(patch_size=16, embed_dim=384, depth=12, num_heads=12, **kwargs)
-    model = timm.models.vision_transformer._create_vision_transformer('vit_small_patch16_224', **model_kwargs)
+#@timm.models.registry.register_model
+#def vit_small_mocov3_patch16_224(**kwargs):
+#    model_kwargs = dict(patch_size=16, embed_dim=384, depth=12, num_heads=12, **kwargs)
+#    model = timm.models.vision_transformer._create_vision_transformer('vit_small_patch16_224', **model_kwargs)
 
-    return model
+#    return model
 
 
 def CLIP_VITS16(**kwargs):
