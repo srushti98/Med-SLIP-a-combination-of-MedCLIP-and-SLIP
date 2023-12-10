@@ -3,4 +3,4 @@ pretrained/medclip-resnet/medclip-pretrained.zip
 pretrained/medclip-resnet/pytorch_model.bin
 pretrained/medclip-vit/medclip-vit-pretrained.zip
 pretrained/medclip-vit/pytorch_model.bin
-
+wandb/
