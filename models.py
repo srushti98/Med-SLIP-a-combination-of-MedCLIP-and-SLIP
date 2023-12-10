@@ -207,7 +207,8 @@ class SLIP(CLIP):
                  **kwargs,
                  ):
         super().__init__(**kwargs)
-        self.MedCLIP_model = MedCLIPModel(vision_cls=MedCLIPVisionModel)
+        self.MedCLIP_model = MedCLIPModel(vision_cls=MedCLIPVisionModelViT)
+        ####self.MedCLIP_model = MedCLIPModel(vision_cls=MedCLIPVisionModel)
         self.MedCLIP_model.from_pretrained()
         self.image_mlp = self._build_mlp(in_dim=self.vision_width, mlp_dim=ssl_mlp_dim, out_dim=ssl_emb_dim)
 

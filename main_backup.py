@@ -36,10 +36,8 @@ def get_args_parser():
     parser.add_argument('--dataset', default='roco', type=str, choices=['yfcc15m', 'cc3m', 'cc12m', 'coco', 'redcaps'])
     parser.add_argument('--root', default='/scratch/sxp8182/MLHC/ML_env/MLHC/roco-dataset/data/train/radiology', type=str,
                         help='path to dataset root')
-    parser.add_argument('--metadata', default='/scratch/sxp8182/MLHC/ML_env/MLHC/roco-dataset/data/train/radiology/selected_pairs.txt', type=str,
+    parser.add_argument('--metadata', default='/scratch/sxp8182/MLHC/ML_env/MLHC/roco-dataset/data/train/radiology/initial_100_selected_pairs.txt', type=str,
                         help='path to metadata file (see README for details)')
-    parser.add_argument('--metadataval',
-                        default='/scratch/sxp8182/MLHC/ML_env/MLHC/roco-dataset/data/validation/radiology/selected_pairs.txt',type=str,help='path to metadata file for val (see README for details)')
     parser.add_argument('--output-dir', default='./', type=str, help='output dir')
     # Model
     parser.add_argument('--model', default='SLIP_VITB16', type=str)
@@ -90,13 +88,13 @@ def get_args_parser():
     return parser
 
 best_acc1 = 0
-best_loss=math.inf
+
 
 def main(args):
     #utils.init_distributed_mode(args)
     args.distributed = False
     global best_acc1
-    global best_loss
+
     # fix the seed for reproducibility
     seed = args.seed + utils.get_rank()
     torch.manual_seed(seed)
@@ -165,7 +163,7 @@ def main(args):
     print("=> creating dataset")
     BERT_TYPE = 'emilyalsentzer/Bio_ClinicalBERT'
     tokenizer = AutoTokenizer.from_pretrained(BERT_TYPE)
-    tokenizer.model_max_length = 410
+    tokenizer.model_max_length = 77
     print("tokenizer assignment complete")
     #tokenizer = SimpleTokenizer()
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
@@ -182,18 +180,17 @@ def main(args):
             normalize
         ])
 
-    train_dataset = datasets.get_dataset(train_transform, tokenizer, args, mode='train')
+    train_dataset = datasets.get_dataset(train_transform, tokenizer, args)
     cwd = os.path.dirname(os.path.realpath(__file__))
     with open(os.path.join(cwd, 'dataset_catalog.json')) as f:
         root = json.load(f)['imagenet']['path']
     # val_dataset = ImageFolder(os.path.join(root, 'validation/radiology'), val_transform)
     # TODO: add a ROCO-Val function in the datasets.py
-    val_dataset = datasets.get_dataset(val_transform, tokenizer, args,mode='val')
     # dist eval resamples data to pad uneven batch sizes
     # make sure num_samples = 0 mod num_gpus for exact acc
     if args.distributed:
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-        val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
+        # val_sampler = torch.utils.data.distributed.DistributedSampler(val_dataset)
     else:
         train_sampler = None
         val_sampler = None
@@ -202,9 +199,9 @@ def main(args):
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
 
-    val_loader = torch.utils.data.DataLoader(
-         val_dataset, batch_size=args.batch_size, shuffle=(val_sampler is None),
-         num_workers=args.workers, pin_memory=True, sampler=val_sampler, drop_last=False)
+    # val_loader = torch.utils.data.DataLoader(
+    #     val_dataset, batch_size=args.batch_size, shuffle=(val_sampler is None),
+    #     num_workers=args.workers, pin_memory=True, sampler=val_sampler, drop_last=False)
 
     if args.evaluate:
         if args.model.startswith('SIMCLR'):
@@ -247,21 +244,6 @@ def main(args):
 
         # is_best = acc1 > best_acc1
         # best_acc1 = max(acc1, best_acc1)
-        val_stats = val(val_loader, model, criterion, epoch, args)
-        curr_loss = val_stats['loss']
-
-        print("==> the val stats are ::",val_stats)
-        print("==> old best loss is::",best_loss)
-        print("==> current loss::",curr_loss)
-        is_best = curr_loss < best_loss
-        print("==> is best::",is_best)
-       
-        best_loss=min(curr_loss,best_loss)
-        if is_best:
-            print("saving model for epoch:",epoch)
-            torch.save(model.MedCLIP_model.vision_model.state_dict(), os.path.join(args.output_dir, 'best_image_encoder.pth'))
-            torch.save(model.MedCLIP_model.text_model.state_dict(),os.path.join(args.output_dir, 'best_text_encoder.pth'))
-
         is_best=True
         if epoch%5==0 or epoch == 24:
             print("=> saving checkpoint")
@@ -274,17 +256,13 @@ def main(args):
                     'args': args,
                 }, is_best, args.output_dir)
             torch.save(model.MedCLIP_model.vision_model.state_dict(), os.path.join(args.output_dir, 'image_encoder.pth'))
-            torch.save(model.MedCLIP_model.text_model.state_dict(),os.path.join(args.output_dir, 'text_encoder.pth'))
         log_stats = {**{f'train_{k}': v for k, v in train_stats.items()},
-                     **{f'test_{k}': v for k, v in val_stats.items()},
+                     # **{f'test_{k}': v for k, v in val_stats.items()},
                      'epoch': epoch}
 
         if utils.is_main_process():
             if args.wandb:
-                try:
-                    wandb.log(log_stats)
-                except Exception as e:
-                    print(f"An error occurred with wandb logging: {e}")
+                wandb.log(log_stats)
             with open(os.path.join(args.output_dir, 'log.txt'), 'a') as f:
                 f.write(json.dumps(log_stats) + '\n')
 
@@ -379,12 +357,9 @@ def train(train_loader, model, criterion, optimizer, scaler, epoch, lr_schedule,
 
         if optim_iter % args.print_freq == 0:
             if utils.is_main_process() and args.wandb:
-                try:
-                    wandb.log({**{k: v.item() for k, v in loss_dict.items()},
-                            'scaler': scaler.get_scale(),
-                            'logit': logit_scale})
-                except Exception as e:
-                    print(f"An error occurred with wandb logging: {e}")
+                wandb.log({**{k: v.item() for k, v in loss_dict.items()},
+                        'scaler': scaler.get_scale(),
+                        'logit': logit_scale})
             progress.display(optim_iter)
 
     progress.synchronize()
@@ -392,45 +367,6 @@ def train(train_loader, model, criterion, optimizer, scaler, epoch, lr_schedule,
             'lr': optimizer.param_groups[0]['lr'],
             'logit_scale': logit_scale}
 
-def val(val_loader, model, criterion, epoch, args):
-    print("==> inside val function")
-    batch_time = AverageMeter('Time', ':6.2f')
-    data_time = AverageMeter('Data', ':6.2f')
-    mem = AverageMeter('Mem (GB)', ':6.1f')
-    metric_names = models.get_metric_names(args.model)
-    iters_per_epoch = len(val_loader) // args.update_freq
-    metrics = OrderedDict([(name, AverageMeter(name, ':.2e')) for name in metric_names])
-    progress = ProgressMeter(
-        iters_per_epoch,
-        [batch_time, data_time, mem, *metrics.values()],
-        prefix="Epoch: [{}]".format(epoch))
-
-    # switch to eval mode
-    model.eval()
-
-    end = time.time()
-    with torch.no_grad():
-        for data_iter, inputs in enumerate(val_loader):
-
-            data_time.update(time.time() - end)
-            inputs = [tensor.cuda(args.gpu, non_blocking=True) for tensor in inputs]
-
-            # compute output
-            with amp.autocast(enabled=not args.disable_amp):
-                outputs = model(*inputs)
-                loss_dict = criterion(outputs)
-                loss = loss_dict['loss']
-                loss /= args.update_freq
-
-            for k in loss_dict:
-                metrics[k].update(loss_dict[k].item(), args.batch_size)
-
-            # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
-
-    progress.synchronize()
-    return {**{k: v.avg for k, v in metrics.items()}}
 
 def validate_zeroshot(val_loader, model, tokenizer, args):
     batch_time = AverageMeter('Time', ':6.3f')

@@ -41,10 +41,9 @@ def yfcc_loader(root, index):
 
 
 class ImageCaptionDatasetBase(torch.utils.data.Dataset):
-    def __init__(self, dataset, root, metadata, metadataval, mode):
+    def __init__(self, dataset, root, metadata):
         self.dataset = dataset
         self.root = root
-        self.mode = mode
         if self.dataset == 'yfcc15m':
             with open(metadata, 'rb') as f:
                 self.samples = pickle.load(f)
@@ -65,25 +64,13 @@ class ImageCaptionDatasetBase(torch.utils.data.Dataset):
             print("Inside roco")
             self.samples = []
             # Read the pairs from the file and store them
-            if mode=='train':
-                print("inside train mode")
-                print("metadata path:",metadata)
-                with open(metadata, 'r') as file:
-                    for line in file:
-                        parts = line.strip().split(maxsplit=1)
-                        if len(parts) == 2:
-                            image_name, caption = parts
-                            self.samples.append((image_name, caption))
-            elif mode=='val':
-                print("inside val mode")
-                print("metadataval path:",metadataval)
-                with open(metadataval, 'r') as file:
-                    for line in file:
-                        parts = line.strip().split(maxsplit=1)
-                        if len(parts) == 2:
-                            image_name, caption = parts
-                            self.samples.append((image_name, caption))
-            print("len of samples:",len(self.samples))
+            with open(metadata, 'r') as file:
+                for line in file:
+                    parts = line.strip().split(maxsplit=1)
+                    if len(parts) == 2:
+                        image_name, caption = parts
+                        self.samples.append((image_name, caption))
+            #print(len(self.samples))
 
     def get_raw_item(self, i):
         #print(self.dataset)
@@ -114,8 +101,6 @@ class ImageCaptionDatasetBase(torch.utils.data.Dataset):
             img = pil_loader(path)
         elif self.dataset == 'roco':
             image_id, caption = self.samples[i]
-            if self.mode == 'val':
-                self.root = self.root.replace('/train/', '/validation/')
             path = os.path.join(self.root+'/images', f"{image_id}.jpg")
             #print(image_id,":", caption, ":",path)
             img = pil_loader(path)
@@ -150,9 +135,8 @@ class ImageCaptionDatasetCLIP(ImageCaptionDatasetBase):
 
 
 class ImageCaptionDatasetSLIP(ImageCaptionDatasetBase):
-    def __init__(self, dataset, root, metadata, transform, augment, metadataval=None,mode='train', tokenizer=None):
-        super().__init__(dataset, root, metadata, metadataval, mode)
-
+    def __init__(self, dataset, root, metadata, transform, augment, tokenizer=None):
+        super().__init__(dataset, root, metadata)
 
         self.transform = transform
         self.augment = augment
@@ -220,16 +204,16 @@ def get_downstream_dataset(catalog, name, is_train, transform):
     root = entry['path']
     if entry['type'] == 'imagefolder':
         dataset = t_datasets.ImageFolder(os.path.join(root, entry['train'] if is_train else entry['test']),
-                transform=transform)
+            transform=transform)
     elif entry['type'] == 'special':
         if name == 'cifar10':
             dataset = t_datasets.CIFAR10(root, train=is_train,
-                    transform=transform, download=True)
+                transform=transform, download=True)
             dataset = t_datasets.STL10(root, split='train' if is_train else 'test',
-                    transform=transform, download=True)
+                transform=transform, download=True)
         elif name == 'mnist':
             dataset = t_datasets.MNIST(root, train=is_train,
-                    transform=transform, download=True)
+                transform=transform, download=True)
     elif entry['type'] == 'filelist':
         path = entry['train'] if is_train else entry['test']
         val_images = os.path.join(root, path + '_images.npy')
@@ -245,7 +229,7 @@ def get_downstream_dataset(catalog, name, is_train, transform):
     return dataset
 
 
-def get_dataset(train_transform, tokenizer, args, mode):
+def get_dataset(train_transform, tokenizer, args):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     augment = transforms.Compose([
@@ -266,5 +250,5 @@ def get_dataset(train_transform, tokenizer, args, mode):
         return ImageCaptionDatasetCLIP(args.dataset, args.root, args.metadata, train_transform, tokenizer)
     elif args.model.startswith('SLIP'):
         return ImageCaptionDatasetSLIP(args.dataset, args.root, args.metadata,
-                train_transform, augment, args.metadataval,mode,tokenizer)
+                train_transform, augment, tokenizer)
 # TODO: add the path of the roco file into the dataset_catalog.json
