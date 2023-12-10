@@ -4,3 +4,18 @@ pretrained/medclip-resnet/pytorch_model.bin
 pretrained/medclip-vit/medclip-vit-pretrained.zip
 pretrained/medclip-vit/pytorch_model.bin
 wandb/
+
+# Ignore specific large files
+pretrained/medclip-resnet/medclip-pretrained.zip
+pretrained/medclip-resnet/pytorch_model.bin
+pretrained/medclip-vit/medclip-vit-pretrained.zip
+pretrained/medclip-vit/pytorch_model.bin
+
+# Ignore all .wandb files in the wandb directory
+wandb/**/*.wandb
+
+# Alternatively, ignore entire directories
+pretrained/medclip-resnet/
+pretrained/medclip-vit/
+wandb/
+
