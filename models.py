@@ -226,9 +226,12 @@ class SLIP(CLIP):
     def forward(self, image, text, attention_mask,aug1, aug2):
        # print("text coming in forward", text)
        # print("attention_mask coming in forward",attention_mask)
-        aug1_embed = self.image_mlp(self.visual(aug1))
-        aug2_embed = self.image_mlp(self.visual(aug2))
+        #aug1_embed = self.image_mlp(self.visual(aug1))
+        #aug2_embed = self.image_mlp(self.visual(aug2))
         
+        aug1_embed = self.image_mlp(self.MedCLIP_model.vision_model(aug1))
+        aug2_embed = self.image_mlp(self.MedCLIP_model.vision_model(aug2))
+
         #image_embed = self.encode_image(image)
         #text_embed = self.encode_text(text)
         print("calling text encoder")
@@ -311,7 +314,7 @@ def SIMCLR_VITB16(**kwargs):
 
 def SLIP_VITB16(**kwargs):
     vision_model = timm.create_model('vit_base_patch16_224', num_classes=0)
-    model = SLIP(embed_dim=512, vision_width=768, vision_model=vision_model, context_length=77, vocab_size=49408,
+    model = SLIP(embed_dim=512, vision_width=512, vision_model=vision_model, context_length=77, vocab_size=49408,
         transformer_width=512, transformer_heads=8, transformer_layers=12, **kwargs)
 
     return model
