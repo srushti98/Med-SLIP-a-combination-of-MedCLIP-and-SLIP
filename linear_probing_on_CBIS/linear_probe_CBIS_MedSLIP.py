@@ -19,10 +19,11 @@ from torchmetrics import AUROC
 warnings.filterwarnings("ignore")
 parser = argparse.ArgumentParser(description='Learning Probing on CBIS!')
 parser.add_argument('--seed', default=77, type=int, help='seed value')
-parser.add_argument('--batchsize', default=16, type=int, help='Pre-training Batch size')
-parser.add_argument('--pretrain_epoch', default=25, type=int, help='pretrain_epoch')
+parser.add_argument('--batchsize', default=16, type=int, help='Linear probing Batch size')
+parser.add_argument('--pretrain_epoch', default=25, type=int, help='Linear probing epochs')
 parser.add_argument('--path', default='/scratch/sxp8182/MLHC/ML_env/MLHC/linear_logs',type=str)
-parser.add_argument('--ipath',default='/scratch/sxp8182/MLHC/ML_env/MLHC/50_eps_60000_resnet_backup_25_checkpt/image_encoder.pth',type=str)
+parser.add_argument('--modeltype', default='vit',type=str,help='Give either \'vit\' or \'resnet\'')
+parser.add_argument('--ipath',default='/scratch/sxp8182/MLHC/ML_env/MLHC/50_eps_60000_resnet_backup_25_checkpt/image_encoder.pth',type=str,help='Image encoder path')
 parser.add_argument('--epochs', default=15, type=int, help='Epochs')
 args = parser.parse_args()
 
@@ -102,11 +103,6 @@ class ProjectionHead(nn.Module):
 
     def forward(self, x):
         x = self.backbone(x).flatten(start_dim=1)
-        #print("Output dimensions:", x.shape)
-        #output_shape = x.shape
-
-# Generating a random tensor of the same shape
-        #x = torch.rand(output_shape).to(device)
         projected = self.projection(x)
         x = self.fc(projected)
         return x
@@ -127,10 +123,7 @@ def train_epoch(model, train_loader, optimizer, criterion, lr_scheduler, metric,
         lr_scheduler.step()
         
         loss_meter.update(loss.item())
-        
-        #recall = metric(prediction, label)
-        #acc=accuracy_metric(prediction,label)
-        #prec=precision_metric(prediction,label)
+
         metric.update(prediction, label)  # Existing
         accuracy_metric.update(prediction, label)  # Existing
         precision_metric.update(prediction, label)  # Existing
@@ -139,9 +132,7 @@ def train_epoch(model, train_loader, optimizer, criterion, lr_scheduler, metric,
 
         tqdm_object.set_postfix(train_loss=loss_meter.avg, lr=get_lr(optimizer))
     
-    #recall = metric.compute()
-    #acc=accuracy_metric.compute()
-    #prec=precision_metric.compute()
+
     auroc = metric.compute()  # Existing
     acc = accuracy_metric.compute()  # Existing
     prec = precision_metric.compute()  # Existing
@@ -154,22 +145,14 @@ def train_epoch(model, train_loader, optimizer, criterion, lr_scheduler, metric,
     f1_score_metric.reset()  # Added
     recall_metric.reset()  # Added
     
-    #wandb.log({'train_AUROC':recall.item(),'train_acc':acc.item(),'train_precision':prec.item(),'train_loss':loss_meter.avg})
-    #return loss_meter, {'AUROC': recall.item(), 'train acc':acc.item(),'train pre':prec.item(),'loss': loss_meter.avg}
 
     wandb.log({'train_AUROC': auroc.item(), 'train_acc': acc.item(), 'train_precision': prec.item(), 'train_f1_score': f1_score.item(), 'train_recall': recall.item(), 'train_loss': loss_meter.avg})
-    #print(loss_meter, 'Train AUROC', auroc.item(), 'Train acc', acc.item(), 'Train pre', prec.item(), 'Train f1 score', f1_score.item(), 'Train recall', recall.item(), 'Loss', loss_meter.avg)
-    
-    #wandb.log({'val_auroc':val_recall.item(),'val_acc':acc.item(),'val_precision':prec.item(),'val_loss':loss_meter.avg})
-    #print(loss_meter, 'Validation AUROC', val_recall.item(), 'val acc',acc.item(),'val pre',prec.item(),'loss', loss_meter.avg)
-    #return loss_meter, {'Validation AUROC': val_recall.item(),'val acc':acc.item(),'val pre':prec.item(), 'loss': loss_meter.avg}
-    
+
     return loss_meter, {'AUROC': auroc.item(), 'train acc': acc.item(), 'train pre': prec.item(), 'train f1 score': f1_score.item(), 'train recall': recall.item(), 'loss': loss_meter.avg}
 
 def valid_epoch(model, valid_loader, criterion, metric,accuracy_metric,precision_metric,recall_metric,f1_score_metric,mode='val'):
     loss_meter = AvgMeter()
-    correct = 0
-    total = 0
+
     tqdm_object = tqdm(valid_loader, total=len(valid_loader))
     
     confusion_matrix_metric = torchmetrics.ConfusionMatrix(num_classes=len(diagnosis_map),task='multiclass').to(device)
@@ -179,11 +162,6 @@ def valid_epoch(model, valid_loader, criterion, metric,accuracy_metric,precision
         image, label = image.to(device), label.to(device)
         prediction = model(image)
         loss = criterion(prediction, label)
-
-        #val_recall = val_metric(prediction, label)
-        #recall = metric(prediction, label)
-        #acc=accuracy_metric(prediction,label)
-        #precprecision_metric(prediction,label)
 
         metric.update(prediction, label)  # Existing
         accuracy_metric.update(prediction, label)  # Existing
@@ -219,9 +197,6 @@ def valid_epoch(model, valid_loader, criterion, metric,accuracy_metric,precision
             f.write(str(confusion_matrix.cpu().numpy()) + '\n')
         confusion_matrix_metric.reset()
     
-    #wandb.log({'val_auroc':val_recall.item(),'val_acc':acc.item(),'val_precision':prec.item(),'val_loss':loss_meter.avg})
-    #print(loss_meter, 'Validation AUROC', val_recall.item(), 'val acc',acc.item(),'val pre',prec.item(),'loss', loss_meter.avg)
-    #return loss_meter, {'Validation AUROC': val_recall.item(),'val acc':acc.item(),'val pre':prec.item(), 'loss': loss_meter.avg}
     wandb.log({'val_auroc': val_metric_result.item(), 'val_acc': acc.item(), 'val_precision': prec.item(), 'val_loss': loss_meter.avg, 'val_f1_score': f1_score.item(), 'val_recall': recall.item()})
     print(loss_meter, 'Validation AUROC', val_metric_result.item(), 'val acc', acc.item(), 'val pre', prec.item(), 'val f1 score', f1_score.item(), 'val recall', recall.item(), 'loss', loss_meter.avg)
 
@@ -272,16 +247,11 @@ if __name__ == '__main__':
     print("=> pretrained model path::", args.path)
     print("=> batch size::", args.batchsize)
     print("=> seed::", args.seed)
-    ####train_dataset = Dataset(train_transform, os.path.join('/scratch/sxp8182/MLHC/ML_env/MLHC/', 'CBIS-DDSM/csv/train_final.csv'),
-        ####                    'train')  # datasets.get_downstream_dataset(catalog, args.dataset, is_train=True, transform=train_transform)
-    #####val_dataset = Dataset(val_transform, os.path.join('/scratch/sxp8182/MLHC/ML_env/MLHC/', 'CBIS-DDSM/csv/first_700_val.csv'),
-         ####                 'val')  # datasets.get_downstream_dataset(catalog, args.dataset, is_train=False, transform=val_transform)
-    #####test_dataset = Dataset(val_transform, os.path.join('/scratch/sxp8182/MLHC/ML_env/MLHC/', 'CBIS-DDSM/csv/last_700_test.csv'), 'test')
-    
+
     train_dataset = Dataset(train_transform, os.path.join('/scratch/sxp8182/MLHC/ML_env/MLHC/', 'CBIS-DDSM/csv/train_calcification.csv'),
-                            'train')  # datasets.get_downstream_dataset(catalog, args.dataset, is_train=True, transform=train_transform)
+                            'train')
     val_dataset = Dataset(val_transform, os.path.join('/scratch/sxp8182/MLHC/ML_env/MLHC/', 'CBIS-DDSM/csv/test_calcification.csv'),
-                          'val')  # datasets.get_downstream_dataset(catalog, args.dataset, is_train=False, transform=val_transform)
+                          'val')
     test_dataset = Dataset(val_transform, os.path.join('/scratch/sxp8182/MLHC/ML_env/MLHC/', 'CBIS-DDSM/csv/test_calcification.csv'), 'test')
 
     train_loader = torch.utils.data.DataLoader(
@@ -299,16 +269,16 @@ if __name__ == '__main__':
     
     wandb_id = os.path.split(args.path)[-1]
     wandb.init(project='medclip_linear_prob', id=wandb_id, config=args, resume='allow')
-    # laoding model
-    # model = getattr(models, "SLIP_VITB16")(ssl_mlp_dim=4096, ssl_emb_dim=256, context_length=100)
-    # model_checkpoint = torch.load(args.path)
-    # model.load_state_dict(model_checkpoint['state_dict'])
-    
+
     ####model = MedCLIPModel(vision_cls=MedCLIPVisionModelViT)
     ####model = MedCLIPModel(vision_cls=MedCLIPVisionModel)
 
-    model = MedCLIPVisionModelViT()
-    #$$$model=MedCLIPVisionModel()
+    if args.modeltype=='vit':
+        model = MedCLIPVisionModelViT()
+        print("=> We have loaded medslip vit vision model")
+    else:
+        model = MedCLIPVisionModel()
+        print("=> We have loaded resnet vit vision model")
 
 # Load the saved state dictionary
     print("image encoder is loading from path:",args.ipath)
@@ -319,7 +289,7 @@ if __name__ == '__main__':
     #####model.from_pretrained()
     ######model = model.vision_model
     #
-    print("=> We have loaded mdeclip vision model")
+
     #for name, param in model.named_parameters():
     #    print(name, param)
 

@@ -21,12 +21,10 @@ import torch.distributed as dist
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
-from torchvision.datasets import ImageFolder
 import torchvision.transforms as transforms
 from transformers import AutoTokenizer
 import datasets
 import models
-from tokenizer import SimpleTokenizer
 import utils
 
 
