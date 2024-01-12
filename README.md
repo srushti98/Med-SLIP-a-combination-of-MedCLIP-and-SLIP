@@ -1,241 +1,53 @@
-# [SLIP: Self-supervision meets Language-Image Pre-training](https://arxiv.org/abs/2112.12750)
+# [MedSLIP: Combining image only self-supervision and image-text self-supervision for MedCLIP](https://drive.google.com/file/d/1GgsMnwQdOBMcaUyRw_vNGr-7DVNVXYaL/view?usp=sharing)
 
-<p align="center"><img src="slip.png" alt="SLIP framework" width="400"/></p>
+<p align="center"><img src="medslip.png" alt="SLIP framework" width="400"/></p>
 
 
-## What you can find in this repo:
-- Pre-trained models (with ViT-Small, Base, Large) and code to reproduce results from our paper: **[SLIP: Self-supervision meets Language-Image Pre-training](https://arxiv.org/abs/2112.12750).** *[Norman Mu](https://normanmu.com), [Alexander Kirillov](https://alexander-kirillov.github.io/), [David Wagner](http://people.eecs.berkeley.edu/~daw/) and [Saining Xie](https://sainingxie.com)*, arXiv 2021
+## What is this repo about?:
+- In the project, I have fine-tuned MedCLIP on a large scale medical image-text pair with SLIP objective.
+- Fine-tuning is performed on ROCO dataset which contains 81,825 radiology images, and later it is evaluated on CBIS dataset which contains mammograms of breast cancer for downstream image classification task after linear probing.
+- MedSLIP outperforms MedPaLM -M’s benchmark on CBIS by +1% (macro-AUROC) and MedCLIP by +20% (recall - linear probing).
 
-- An improved CLIP baseline (31.3% → 34.6% ImageNet 0-shot w/ Modified ResNet-50) on YFCC15M dataset.
-- Zero-shot transfer and linear classification evaluation scripts on **26** downstream datasets.
+## Results
+The following models are finetuned on ROCO and evaluated on CBIS dataset.
 
-## Updates:
+### Linear Classification Results on Abnormality Type - Calcification (CBIS dataset)
 
-Jan 18 2022: Added support for training on RedCaps
+*Metrics are calculated by macro averaging. ***Official benchmarks- MedPalM-M.*
 
-Jan 17 2022: Released CC3M/CC12M CLIP/SLIP ViT-B checkpoints
+| Model                          | AUROC* | F1-Score* | Precision* | Recall* | Precision (Malignant) | Recall (Malignant) |
+| ------------------------------ | ------ | -------- | ---------- | ------- | --------------------- | ------------------ |
+| MedPALM-M (12B)**              | 81.4   | **67.83** | N/A        | N/A     | N/A                   | N/A                |
+| MedPALM-M (84B)**              | 82.22  | 63.81    | N/A        | N/A     | N/A                   | N/A                |
+| MedPALM-M (562B)**             | 80.9   | 63.03    | N/A        | N/A     | N/A                   | N/A                |
+| MedCLIP-ViT                    | 82.22  | 63.52    | **68.37**  | 65.48   | **78.68**             | 37.20              |
+| MedCLIP-ResNet                 | 78.18  | 58.88    | 57.91      | 60.84   | 56.6                  | 46.5               |
+| MedSLIP-ViT (entire ROCO)      | 80.13  | 64.28    | 66.61      | 65.45   | 71.42                 | 42.63              |
+| MedSLIP-ResNet (entire ROCO)   | 75.64  | 57.38    | 56.54      | 59.38   | 59.1                  | 52.7               |
+| MedSLIP-ViT (mammo+xray)       | 82.11  | 64.65    | 65.31      | 64.7    | 65.38                 | 52.71              |
+| MedSLIP-ResNet (mammo+xray)    | 77.75  | 59.75    | 59.07      | 60.97   | 60.4                  | **62.8**           |
+| **MedSLIP-ViT (only mammo)**   | **83.17** | 67.09 | 67.55      | **67.29** | 66.98             | 55.03              |
+| MedSLIP-ResNet(only mammo)     | 78.35  | 61.51    | 60.77      | 63.46   | 59.7                  | 62.0               |
 
-## Results and Pre-trained Models
-The following models are pre-trained on YFCC15M and evaluated on ImageNet-1K (ILSVRC2012).
 
-### ViT-Small (MoCo v3 version w/ 12 vs. 6 heads)
-<table><tbody>
-<!-- START TABLE -->
-<!-- TABLE HEADER -->
-<th valign="center">Method</th>
-<th valign="center">Epochs</th>
-<th valign="center">0-shot</th>
-<th valign="center">Linear</th>
-<th valign="center">Finetuned</th>
-<th valign="center">Weights</th>
 
-<!-- TABLE BODY -->
-<tr>
-<td align="center">CLIP</td>
-<td align="center">25</td>
-<td align="center">32.7</td>
-<td align="center">59.3</td>
-<td align="center">78.2</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/clip_small_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SimCLR</td>
-<td align="center">25</td>
-<td align="center">-</td>
-<td align="center">58.1</td>
-<td align="center">79.9</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/simclr_small_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">25</td>
-<td align="center">38.3</td>
-<td align="center">66.4</td>
-<td align="center">80.3</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_small_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">50</td>
-<td align="center">39.3</td>
-<td align="center">67.6</td>
-<td align="center">80.7</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_small_50ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">100</td>
-<td align="center">39.5</td>
-<td align="center">68.3</td>
-<td align="center">80.7</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_small_100ep.pt">url</a></td>
-</tr>
-</tbody></table>
+### Linear Classification Results on Abnormality Type - MASS (CBIS dataset)
 
-### ViT-Base
-<table><tbody>
-<!-- START TABLE -->
-<!-- TABLE HEADER -->
-<th valign="center">Method</th>
-<th valign="center">Epochs</th>
-<th valign="center">0-shot</th>
-<th valign="center">Linear</th>
-<th valign="center">Finetuned</th>
-<th valign="center">Weights</th>
+*Metrics are calculated by macro averaging. ***Official benchmarks- MedPalM-M.*
 
-<!-- TABLE BODY -->
-<tr>
-<td align="center">CLIP</td>
-<td align="center">25</td>
-<td align="center">37.6</td>
-<td align="center">66.5</td>
-<td align="center">80.5</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/clip_base_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SimCLR</td>
-<td align="center">25</td>
-<td align="center">-</td>
-<td align="center">64.0</td>
-<td align="center">82.5</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/simclr_base_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">25</td>
-<td align="center">42.8</td>
-<td align="center">72.1</td>
-<td align="center">82.6</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_base_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">50</td>
-<td align="center">44.1</td>
-<td align="center">73.0</td>
-<td align="center">82.9</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_base_50ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">100</td>
-<td align="center">45.0</td>
-<td align="center">73.6</td>
-<td align="center">83.4</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_base_100ep.pt">url</a></td>
-</tr>
-</tbody></table>
-
-### ViT-Large
-<table><tbody>
-<!-- START TABLE -->
-<!-- TABLE HEADER -->
-<th valign="center">Method</th>
-<th valign="center">Epochs</th>
-<th valign="center">0-shot</th>
-<th valign="center">Linear</th>
-<th valign="center">Finetuned</th>
-<th valign="center">Weights</th>
-
-<!-- TABLE BODY -->
-<tr>
-<td align="center">CLIP</td>
-<td align="center">25</td>
-<td align="center">40.4</td>
-<td align="center">70.5</td>
-<td align="center">81.0</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/clip_large_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SimCLR</td>
-<td align="center">25</td>
-<td align="center">-</td>
-<td align="center">66.7</td>
-<td align="center">84.0</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/simclr_large_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">25</td>
-<td align="center">46.2</td>
-<td align="center">76.0</td>
-<td align="center">84.2</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_large_25ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">50</td>
-<td align="center">47.4</td>
-<td align="center">75.8</td>
-<td align="center">84.7</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_large_50ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">SLIP</td>
-<td align="center">100</td>
-<td align="center">47.9</td>
-<td align="center">75.1</td>
-<td align="center">84.8</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_large_100ep.pt">url</a></td>
-</tr>
-</tbody></table>
-
-### Additional Datasets and Models
-<table><tbody>
-<!-- START TABLE -->
-<!-- TABLE HEADER -->
-<th valign="center">Dataset</th>
-<th valign="center">Method</th>
-<th valign="center">Model</th>
-<th valign="center">Epochs</th>
-<th valign="center">0-shot</th>
-<th valign="center">Linear</th>
-<th valign="center">Finetuned</th>
-<th valign="center">Weights</th>
-
-<!-- TABLE BODY -->
-<tr>
-<td align="center">CC3M</td>
-<td align="center">CLIP</td>
-<td align="center">ViT-B</td>
-<td align="center">40</td>
-<td align="center">17.1</td>
-<td align="center">53.3</td>
-<td align="center">79.5</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/clip_base_cc3m_40ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">CC3M</td>
-<td align="center">SLIP</td>
-<td align="center">ViT-B</td>
-<td align="center">40</td>
-<td align="center">23.0</td>
-<td align="center">65.4</td>
-<td align="center">81.4</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_base_cc3m_40ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">CC12M</td>
-<td align="center">CLIP</td>
-<td align="center">ViT-B</td>
-<td align="center">35</td>
-<td align="center">36.5</td>
-<td align="center">69.0</td>
-<td align="center">82.1</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/clip_base_cc12m_35ep.pt">url</a></td>
-</tr>
-<tr>
-<td align="center">CC12M</td>
-<td align="center">SLIP</td>
-<td align="center">ViT-B</td>
-<td align="center">35</td>
-<td align="center">40.7</td>
-<td align="center">73.7</td>
-<td align="center">83.1</td>
-<td align="center"><a href="https://dl.fbaipublicfiles.com/slip/slip_base_cc12m_35ep.pt">url</a></td>
-</tr>
-
-</tbody></table>
+| Model                          | AUROC* | F1-Score* | Precision* | Recall* | Precision (Malignant) | Recall (Malignant) |
+| ------------------------------ | ------ | -------- | ---------- | ------- | --------------------- | ------------------ |
+| MedPALM-M (12B)**              | 70.11  | 47.23    | N/A        | N/A     | N/A                   | N/A                |
+| MedPALM-M (84B)**              | **73.09** | 49.98  | N/A        | N/A     | N/A                   | N/A                |
+| MedPALM-M (562B)**             | 73.31  | **51.12** | N/A        | N/A     | N/A                   | N/A                |
+| MedCLIP-ViT                    | 64.39  | 40.77    | **54.78**  | 42.64   | 47.9                  | 70.1               |
+| MedCLIP-ResNet                 | 57.55  | 35.99    | 35.50      | 38.82   | 43.9                  | 68.0               |
+| MedSLIP-ViT (entire ROCO)      | 65.90  | 35.76    | 35.76      | 39.76   | 44.7                  | 69.4               |
+| MedSLIP-ResNet (entire ROCO)   | 59.45  | 37.48    | 35.74      | 39.39   | 47.8                  | 51.7               |
+| **MedSLIP-ViT (mammo+xray)**   | 67.60  | 42.14    | 44.4       | **44.28** | **52.35**          | **75.51**          |
+| MedSLIP-ResNet (mammo+xray)    | 61.42  | 39.95    | 43.49      | 41.35   | 49.2                  | 62.6               |
+| MedSLIP-ViT (only mammo)       | 65.61  | 41.19    | 44.08      | 43.15   | 50.96                 | 72.10              |
+| MedSLIP-ResNet(only mammo)     | 58.43  | 38.31    | 50.30      | 38.72   | 43.78                 | 55.10              |
 
 ## 1. Setup
 Install [PyTorch](https://pytorch.org) and [timm](https://github.com/rwightman/pytorch-image-models). 
@@ -500,13 +312,3 @@ python run_with_submitit_finetune.py \
 ### License
 
 This project is under the MIT license. See [LICENSE](LICENSE) for details.
-
-### Citation
-```
-@Article{mu2021slip,
-  author  = {Norman Mu and Alexander Kirillov and David Wagner and Saining Xie},
-  title   = {SLIP: Self-supervision meets Language-Image Pre-training},
-  journal = {arXiv preprint arXiv:2112.12750},
-  year    = {2021},
-}
-```
