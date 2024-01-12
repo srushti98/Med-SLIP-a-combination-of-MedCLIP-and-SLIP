@@ -4,6 +4,7 @@
 
 
 ## What is this repo about? [[report]](https://drive.google.com/file/d/1GgsMnwQdOBMcaUyRw_vNGr-7DVNVXYaL/view?usp=sharing):
+- This code is developed by Srushti Pawar,[(sxp8182@nyu.edu)](sxp8182@nyu.edu), NYU Courant under NYU's [Prof. Rajesh Ranganath](https://cims.nyu.edu/~rajeshr/)
 - In the project, I have fine-tuned MedCLIP on a large scale medical image-text pair with SLIP objective.
 - Fine-tuning is performed on [ROCO dataset](https://github.com/razorx89/roco-dataset) which contains 81,825 radiology images, and later it is evaluated on [CBIS dataset](https://www.kaggle.com/datasets/awsaf49/cbis-ddsm-breast-cancer-image-dataset) which contains mammograms of breast cancer for downstream image classification task after linear probing.
 - MedSLIP outperforms [MedPaLM-M](https://arxiv.org/abs/2307.14334)’s benchmark on CBIS by +1% (macro-AUROC) and [MedCLIP](https://github.com/RyanWangZf/MedCLIP/tree/main/medclip) by +20% (recall - linear probing).
@@ -49,7 +50,9 @@ The following models are finetuned on ROCO and evaluated on CBIS dataset.
 | MedSLIP-ViT (only mammo)       | 65.61  | 41.19    | 44.08      | 43.15   | 50.96                 | 72.10              |
 | MedSLIP-ResNet(only mammo)     | 58.43  | 38.31    | 50.30      | 38.72   | 43.78                 | 55.10              |
 
-## 2. Fine-Tuning
+## Step to run
+
+### 1. Finetuning on ROCO dataset
 
 We use the SLIP objective.
 See [main.py](main.py) for the full list of default arguments.
@@ -86,22 +89,27 @@ Some important arguments:
 `--disable-amp`: disable mixed-precision training (requires more memory and compute)
 
 
-## 2. Evaluation: Linear Classification
+## 2. Evaluation: Linear Classification (on CBIS dataset)
 
-See [main_linear.py](main_linear.py) for the full list of default arguments.
-As with pre-training, our workflow uses [submitit](https://github.com/facebookincubator/submitit).
-For local training with [torchrun](https://pytorch.org/docs/stable/elastic/run.html), replace `python run_with_submitit_linear.py` with `torchrun --nproc_per_node=8 main_linear.py`. 
-This script reads the ImageNet dataset path from the dataset catalog ([dataset_catalog.json](dataset_catalog.json)), which must be set properly before training.
+See [linear_probe_CBIS_MedSLIP.py](linear_probe_CBIS_MedSLIP.py) and [linear_probe_CBIS_MedClip.py](linear_probe_CBIS_MedClip.py) for the full list of default arguments.
+
+1) `linear_probe_CBIS_MedSLIP.py` => This script should be run to linear probe on finetuned MedSLIP's image encoder ( derived from Step 1 )
+2) `linear_probe_CBIS_MedClip.py` => This script should be run to linear probe on pretrained MedCLIP's image encoder ( for baseline generation, this will not use image encoder's generated from Step 1 )
 
 ```
-python run_with_submitit_linear.py  \
-  --arch vit_base_patch16_224 --dataset imagenet \
-  --pretrained /path/to/checkpoint.pt
+python linear_probe_CBIS_MedSLIP.py --path <output dir>
 ```
+Some important arguments:
 
-To evaluate linear classification on other datasets, set `--dataset` to the corresponding dataset name listed in [dataset_catalog.json](dataset_catalog.json).
+`--batchsize`: Linear probing Batch size
 
+`--path`: Output logs save directory path
 
+`--modeltype`: Give either `vit` or `resnet` based on the type of image encoder saved in step 1
+
+`--ipath`: Image encoder path saved from step 1 For example: `<home>/50_eps_60000_resnet_backup_25_checkpt/image_encoder.pth`
+
+`--epochs`: Linear probing epochs
 
 ### License
 
