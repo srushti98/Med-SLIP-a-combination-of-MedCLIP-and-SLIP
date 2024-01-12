@@ -3,7 +3,7 @@
 <p align="center"><img src="medslip.png" alt="SLIP framework" width="400"/></p>
 
 
-## What is this repo about?:
+## What is this repo about?[Report](https://drive.google.com/file/d/1GgsMnwQdOBMcaUyRw_vNGr-7DVNVXYaL/view?usp=sharing):
 - In the project, I have fine-tuned MedCLIP on a large scale medical image-text pair with SLIP objective.
 - Fine-tuning is performed on ROCO dataset which contains 81,825 radiology images, and later it is evaluated on CBIS dataset which contains mammograms of breast cancer for downstream image classification task after linear probing.
 - MedSLIP outperforms MedPaLM -M’s benchmark on CBIS by +1% (macro-AUROC) and MedCLIP by +20% (recall - linear probing).
