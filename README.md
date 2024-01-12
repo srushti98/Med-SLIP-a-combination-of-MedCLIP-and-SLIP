@@ -55,11 +55,17 @@ We use the SLIP objective.
 See [main.py](main.py) for the full list of default arguments.
 
 
+To run the fine-tuning,
+
+`python main.py --epochs <no of epochs> --output-dir <output_save_path> --gpu 0 --batch-size <batch_size> --wandb`
+
 Some important arguments:
 
-`--root`: path to dataset root
+`--root`: path to dataset root for train. for example:`<home>/roco-dataset/data/train/radiology`
 
-`--metadata`: path to metadata file (see section 1 for details)
+`--metadata`: path to metadata file for training. for example: `<home>/roco-dataset/data/train/radiology/<metadata.txt file>`
+
+`--metadataval`: path to metadata file for validation. for example: `<home>/roco-dataset/data/validation/radiology/<metadata.txt file>`
 
 `--ssl-mlp-dim`: hidden dim of SimCLR mlp projection head
 
@@ -80,7 +86,7 @@ Some important arguments:
 `--disable-amp`: disable mixed-precision training (requires more memory and compute)
 
 
-## 4. Evaluation: Linear Classification
+## 2. Evaluation: Linear Classification
 
 See [main_linear.py](main_linear.py) for the full list of default arguments.
 As with pre-training, our workflow uses [submitit](https://github.com/facebookincubator/submitit).
